@@ -1,0 +1,27 @@
+services:
+
+  user-service:
+    build: 
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./user-service/.env
+    depends_on:
+      - user-db
+
+  user-db:
+    image: postgres:16
+    container_name: user-db
+    restart: always
+    env_file:
+      - ./user-service/.env
+    ports:
+      - "5433:5432"              
+    volumes:
+      - postgres_data:/var/lib/postgresql/data 
+
+volumes:
+  postgres_data:

@@ -1,0 +1,156 @@
+openapi: 3.0.3
+info:
+  title: API de Usuarios
+  version: 1.0.0
+  description: API para gestionar usuarios con CRUD, login y recuperación de clave.
+
+servers:
+  - url: http://localhost:3000/api
+
+paths:
+  /users/register: 
+    post:
+      summary: Registro de usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "201":
+          description: Usuario creado correctamente
+        "400":
+          description: Datos inválidos
+        "409":
+          description: El correo ya está registrado
+
+  /auth/login:
+    post:
+      summary: Inicio de sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login exitoso (devuelve token JWT)
+        "400":
+          description: Datos inválidos
+        "401":
+          description: Credenciales incorrectas
+
+  /auth/recover-password:
+    post:
+      summary: Recuperación de contraseña
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Email enviado con instrucciones
+        "400":
+          description: Email inválido
+        "404":
+          description: Usuario no encontrado
+
+  /users/me:
+    get:
+      summary: Ver perfil propio
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Datos del usuario autenticado
+        "401":
+          description: No autorizado
+    put:
+      summary: Actualizar datos de la cuenta propia
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Datos actualizados correctamente
+        "400":
+          description: Datos inválidos
+        "401":
+          description: No autorizado
+    delete:
+      summary: Eliminar cuenta propia
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Cuenta eliminada correctamente
+        "401":
+          description: No autorizado
+        "403":
+          description: No tiene permisos para esta acción
+
+  /users:
+    get:
+      summary: Listar todos los usuarios (solo admins)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Lista de usuarios
+        "401":
+          description: No autorizado
+        "403":
+          description: Solo administradores pueden ver esta información
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
