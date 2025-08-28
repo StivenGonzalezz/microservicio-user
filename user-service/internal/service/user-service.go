@@ -13,10 +13,6 @@ type UserService struct {
 	Repo ports.UserRepository
 }
 
-func (s *UserService) RecoverPassword(email string) error {
-	return s.Repo.RecoverPassword(email)
-}
-
 func (s *UserService) Register(user *model.User) error {
 	hashPassword, _ := hash.HashPassword(user.Password)
 	user.Password = hashPassword
@@ -36,9 +32,16 @@ func (s *UserService) Login(email, password string) (string, error) {
 		return "", errors.New("invalid password")
 	}
 
-	token, err := jwt.GenerateToken(int(user.ID))
-
+	token, err := jwt.GenerateToken(int(user.ID),user.Email)
 	return token, err
+}
+
+func (s *UserService) RecoverPassword(email string) error {
+	return s.Repo.RecoverPassword(email)
+}
+
+func (s *UserService) GetId(userId int) (*model.User, error) {
+	return s.Repo.GetId(userId)
 }
 
 func (s *UserService) Update(email, password string) error {

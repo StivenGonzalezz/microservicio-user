@@ -1,11 +1,13 @@
 package repository
 
 import (
-	"user-service/internal/domain/model"
-    "user-service/internal/domain/ports"
-	"user-service/pkg/hash"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
+	"user-service/internal/domain/model"
+	"user-service/internal/domain/ports"
+	"user-service/pkg/hash"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -37,12 +39,27 @@ func NewPostgresRepo() ports.UserRepository {
 
 
 func (p *PostgresRepo) Save(user *model.User) error {
-	return p.db.Create(user).Error
+	result := p.db.Create(user)
+    if result.Error != nil {
+        if strings.Contains(result.Error.Error(), "duplicate key value violates unique constraint") {
+            return errors.New("email already registered")
+        }
+        return result.Error
+    }
+    return nil
 }
 
 func (p *PostgresRepo) GetByEmail(email string) (*model.User, error) {
 	var user model.User
 	if err := p.db.Where("email = ?", email).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (p *PostgresRepo) GetId(userId int) (*model.User, error) {
+	var user model.User
+	if err := p.db.Where("id = ?", userId).First(&user).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
