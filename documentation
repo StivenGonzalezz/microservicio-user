@@ -5,7 +5,7 @@ info:
   description: API para gestionar usuarios con CRUD, login y recuperación de clave.
 
 servers:
-  - url: http://localhost:3000/api
+  - url: http://localhost:8080/
 
 paths:
   /user:
@@ -33,7 +33,7 @@ paths:
         "503":
           description: Servicio de base de datos no disponible
 
-  /auth/login:
+  /login:
     post:
       summary: Inicio de sesión
       requestBody:
@@ -70,7 +70,7 @@ paths:
         "503":
           description: Servicio de autenticación no disponible
 
-  /patch/user/password:
+  /user/password:
     patch:
       summary: Recuperación de contraseña
       requestBody:

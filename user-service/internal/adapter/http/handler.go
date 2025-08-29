@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"user-service/internal/domain/model"
@@ -68,7 +69,7 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 	})
 
 	//Obtencion de un usuario
-	router.GET("/user/:id", middleware.AuthMiddleware(), func(c *gin.Context) {
+	router.GET("/user/:id", middleware.VerifyToken(), func(c *gin.Context) {
 		id := c.Param("id")
 		userId, err := strconv.Atoi(id)
 		if err != nil {
@@ -99,13 +100,18 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 
 
 	//Actualizacion de usuario
-	router.PUT("/user", func(c *gin.Context){
+	router.PUT("/user", middleware.VerifyToken(), func(c *gin.Context){
+		email := c.GetHeader("jwtEmail")
 		var req model.User
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
 			return
 		}
 
+		if email != req.Email  || email != "admin@admin.com" {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			return
+		}
 		err := userService.Update(req.Email, req.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not update user", "error": err.Error()})
@@ -131,7 +137,13 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 	})
 
 	//Obtencion de todos los usuarios
-	router.GET("/users", func(c *gin.Context){
+	router.GET("/users", middleware.VerifyToken(), func(c *gin.Context){
+		email, _ := c.Get("jwtEmail")
+		fmt.Println(email)
+		if email != "admin@admin.com" {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			return
+		}
 		users, err := userService.GetAll()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not get users", "error": err.Error()})
