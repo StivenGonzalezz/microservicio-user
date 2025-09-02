@@ -16,7 +16,7 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 	router.POST("/user", middleware.ValidateUserPayload(), func(c *gin.Context) {
 		userData, _ := c.Get("user")
 		req := userData.(model.User)
-	
+
 		err := userService.Register(&req)
 		if err != nil {
 			if err.Error() == "email already registered" {
@@ -29,9 +29,9 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 				"message": "Internal server error, could not register user",
 				"error":   err.Error(),
 			})
-			return 
+			return
 		}
-	
+
 		c.JSON(http.StatusCreated, gin.H{
 			"message": "User created successfully",
 			"user":    req,
@@ -39,7 +39,7 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 	})
 
 	//Login de usuario
-	router.POST("/auth/login", func(c *gin.Context){
+	router.POST("/auth/login", func(c *gin.Context) {
 		var req model.User
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
@@ -53,19 +53,56 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 		c.JSON(http.StatusOK, gin.H{"message": "User logged in successfully", "token": token})
 	})
 
-	//Recuperacion de contraseña
-	router.PATCH("/user/password", func(c *gin.Context){
-		var req model.User
+	//Generacion de URL para recuperacion de contraseña
+	router.POST("/user/recover", func(c *gin.Context) {
+		var req struct {
+			Email string `json:"email"`
+		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
 			return
 		}
-		err := userService.RecoverPassword(req.Email)
+
+		url, err := userService.RecoverPassword(req.Email)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not recover password", "error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Internal server error, could not generate recovery link",
+				"error":   err.Error(),
+			})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "Password recovered successfully", "user": &req})
+
+		// En el futuro se envía por email, de momento lo devolvemos
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Recovery link generated successfully",
+			"url":     url,
+		})
+	})
+
+	//Recuperacion de contraseña
+	router.PATCH("/user/password/:id", func(c *gin.Context) {
+		idParam := c.Param("id")
+		id, err := strconv.Atoi(idParam)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid user ID"})
+			return
+		}
+
+		var req struct {
+			Password string `json:"password"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+			return
+		}
+
+		err = userService.UpdatePassword(uint(id), req.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not update password", "error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 	})
 
 	//Obtencion de un usuario
@@ -79,65 +116,74 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 		user, err := userService.GetId(userId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Internal server error, could not get user",
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	if user == nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"message": "User not found",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "User retrieved successfully",
-		"user":    user,
-	})
-})
-
-
-	//Actualizacion de usuario
-	router.PUT("/user", middleware.VerifyToken(), func(c *gin.Context){
-		email := c.GetHeader("jwtEmail")
-		var req model.User
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+				"message": "Internal server error, could not get user",
+				"error":   err.Error(),
+			})
 			return
 		}
 
-		if email != req.Email  || email != "admin@admin.com" {
+		if user == nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "User not found",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "User retrieved successfully",
+			"user":    user,
+		})
+	})
+
+	//Actualizacion de usuario
+	router.PUT("/user", middleware.ValidateUserPayload(), middleware.VerifyToken(), func(c *gin.Context) {
+		val, _ := c.Get("jwtEmail")
+		email := val.(string)
+
+		valUser, _ := c.Get("user")
+		req := valUser.(model.User)
+
+		userId, _ := c.Get("jwtId")
+		req.ID = uint(userId.(int))
+
+		if email != req.Email {
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
 			return
 		}
-		err := userService.Update(req.Email, req.Password)
+
+		err := userService.Update(&req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not update user", "error": err.Error()})
 			return
 		}
+
 		c.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "user": &req})
 	})
 
 	//Eliminacion de usuario
-	router.DELETE("/user", func(c *gin.Context){
+	router.DELETE("/user", middleware.VerifyToken(), func(c *gin.Context) {
 		var req model.User
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
 			return
 		}
 
-		err := userService.Delete(req.Email)
+		userId, _ := c.Get("jwtId")
+		if userId == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			return
+		}
+
+		err := userService.Delete(userId.(int), req.Email, req.Password)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not delete user", "error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not delete user"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully", "user": &req})
 	})
 
 	//Obtencion de todos los usuarios
-	router.GET("/users", middleware.VerifyToken(), func(c *gin.Context){
+	router.GET("/users", middleware.VerifyToken(), func(c *gin.Context) {
 		email, _ := c.Get("jwtEmail")
 		fmt.Println(email)
 		if email != "admin@admin.com" {
@@ -150,5 +196,5 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "Users retrieved successfully", "users": users})
-	})	
+	})
 }

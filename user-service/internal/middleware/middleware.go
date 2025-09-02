@@ -31,13 +31,13 @@ func ValidateUserPayload() gin.HandlerFunc {
 			return
 		}
 
+		// Validar campos permitidos
 		allowed := map[string]bool{
 			"name":     true,
 			"lastName": true,
 			"email":    true,
 			"password": true,
 		}
-
 		for key := range raw {
 			if !allowed[key] {
 				c.JSON(http.StatusBadRequest, gin.H{"message": "Unexpected field: " + key})
@@ -46,18 +46,21 @@ func ValidateUserPayload() gin.HandlerFunc {
 			}
 		}
 
+		// Directamente mapear al struct
 		var user model.User
-		if err := c.ShouldBindJSON(&user); err != nil {
+		if err := json.Unmarshal(bodyBytes, &user); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid user data", "error": err.Error()})
 			c.Abort()
 			return
 		}
 
+		// Guardamos el user en el contexto
 		c.Set("user", user)
 
 		c.Next()
 	}
 }
+
 
 func VerifyToken() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -83,13 +86,17 @@ func VerifyToken() gin.HandlerFunc {
 			return
 		}
 
-		// Guardamos el email en contexto
+		// Guardamos el email y id en contexto
 		if email, ok := claims["user_email"].(string); ok {
 			c.Set("jwtEmail", email)
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Token does not contain user_email"})
 			c.Abort()
 			return
+		}
+
+		if id, ok := claims["user_id"].(float64); ok {
+			c.Set("jwtId", int(id))
 		}
 
 		c.Next()

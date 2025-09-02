@@ -65,9 +65,12 @@ func (p *PostgresRepo) GetId(userId int) (*model.User, error) {
 	return &user, nil
 }
 
-func (p *PostgresRepo) Update(user *model.User) error {
-	return p.db.Save(user).Error
+func (s *PostgresRepo) Update(user *model.User) error {
+    return s.db.Model(&model.User{}).
+        Where("id = ?", user.ID).
+        Updates(user).Error
 }
+
 
 func (p *PostgresRepo) Delete(user *model.User) error {
 	return p.db.Delete(user).Error

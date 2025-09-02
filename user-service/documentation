@@ -70,9 +70,9 @@ paths:
         "503":
           description: Servicio de autenticación no disponible
 
-  /user/password:
-    patch:
-      summary: Recuperación de contraseña
+  /user/recover:
+    post:
+      summary: Solicitar recuperación de contraseña
       requestBody:
         required: true
         content:
@@ -87,17 +87,50 @@ paths:
                   format: email
       responses:
         "200":
-          description: Email enviado con instrucciones
+          description: Email enviado con instrucciones de recuperación
         "400":
           description: Email inválido
         "404":
           description: Usuario no encontrado
         "500":
           description: Error interno del servidor
-        "501":
-          description: Funcionalidad no implementada
         "503":
           description: Servicio de correo no disponible
+
+  /user/password/{id}:
+    patch:
+      summary: Actualizar contraseña de usuario
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Contraseña actualizada correctamente
+        "400":
+          description: Datos inválidos
+        "401":
+          description: No autorizado
+        "404":
+          description: Usuario no encontrado
+        "500":
+          description: Error interno del servidor
+        "503":
+          description: Servicio de base de datos no disponible
 
   /users/{id}:
     get:
@@ -123,16 +156,12 @@ paths:
           description: Error interno del servidor
         "503":
           description: Servicio de base de datos no disponible
+
+  /users:
     put:
       summary: Actualizar datos de la cuenta propia
       security:
         - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
@@ -154,16 +183,11 @@ paths:
           description: Error interno del servidor
         "503":
           description: Servicio de base de datos no disponible
+
     delete:
       summary: Eliminar cuenta propia
       security:
         - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           description: Cuenta eliminada correctamente
@@ -176,7 +200,6 @@ paths:
         "503":
           description: Servicio de base de datos no disponible
 
-  /users:
     get:
       summary: Listar todos los usuarios (solo admins)
       security:
