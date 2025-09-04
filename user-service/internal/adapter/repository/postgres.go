@@ -76,9 +76,9 @@ func (p *PostgresRepo) Delete(user *model.User) error {
 	return p.db.Delete(user).Error
 }
 
-func (p *PostgresRepo) GetAll() ([]model.User, error) {
+func (p *PostgresRepo) GetAll(nameOrEmail string) ([]model.User, error) {
 	var users []model.User
-	if err := p.db.Find(&users).Error; err != nil {
+	if err := p.db.Where("name = ? OR email = ?", nameOrEmail, nameOrEmail).Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil

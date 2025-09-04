@@ -9,5 +9,5 @@ type UserRepository interface {
 	Update(user *model.User) error
 	Delete(user *model.User) error
 	RecoverPassword(email string) error
-	GetAll() ([]model.User, error)
+	GetAll(nameOrEmail string) ([]model.User, error)
 }

@@ -28,7 +28,7 @@ func main() {
 	router := gin.Default()
 	http.SetupRoutes(router, user)
 
-	//router.StaticFile("/swagger.json", "documentation/docs/myswagger.json")
+	router.StaticFile("/swagger.json", "documentation/docs/myswagger.json")
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(
 		swaggerFiles.Handler,
 		ginSwagger.URL("/swagger.json"),

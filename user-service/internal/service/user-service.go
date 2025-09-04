@@ -77,26 +77,27 @@ func (s *UserService) Update(user *model.User) error {
 	if comparedSucces != nil {
 		return errors.New("invalid password")
 	}
+	user.Password = userdb.Password
 
     return s.Repo.Update(user)
 }
 
 
 func (s *UserService) Delete(userId int, email string, password string) error {
-	user, err := s.Repo.GetId(userId)
+	user, err := s.Repo.GetByEmail(email)
 	if err != nil {
 		return err
 	}
-	if user.Email != email || email != "admin@admin.com" {
+	if user.Email != email {
 		return errors.New("invalid email")
 	}
 	comparedSucces := hash.ComparePassword(user.Password, password)
-	if comparedSucces != nil || password != "admin@admin.com" {
+	if comparedSucces != nil{
 		return errors.New("invalid password")
 	}
 	return s.Repo.Delete(user)
 }
 
-func (s *UserService) GetAll() ([]model.User, error) {
-	return s.Repo.GetAll()
+func (s *UserService) GetAll(nameOrEmail string) ([]model.User, error) {
+	return s.Repo.GetAll(nameOrEmail)
 }
