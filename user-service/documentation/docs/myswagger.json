@@ -12,9 +12,6 @@
     "/users": {
       "post": {
         "summary": "Registro de usuario",
-        "parameters": [
-          { "in": "body", "name": "user", "required": true, "schema": { "$ref": "#/components/schemas/UserCreate" } }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -32,58 +29,107 @@
               }
             }
           },
-          "400": { "description": "Datos inválidos" },
-          "409": { "description": "El correo ya está registrado" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de base de datos no disponible" }
+          "400": { "description": "Datos inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "El correo ya está registrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de base de datos no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       },
       "get": {
-        "summary": "Listar todos los usuarios (solo admins)",
+        "summary": "Listar usuarios (paginado, filtrado opcional por nombre, solo admins)",
         "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "schema": { "type": "string" },
+            "required": false,
+            "description": "Filtrar usuarios por nombre (opcional)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": { "type": "integer", "default": 1, "minimum": 1 },
+            "description": "Número de página (empezando en 1)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 },
+            "description": "Cantidad de resultados por página"
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "asc" },
+            "description": "Orden de los resultados"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Lista de usuarios",
+            "description": "Lista de usuarios paginada y opcionalmente filtrada por nombre",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/User" }
+                  "type": "object",
+                  "properties": {
+                    "total": { "type": "integer", "example": 150 },
+                    "page": { "type": "integer", "example": 2 },
+                    "limit": { "type": "integer", "example": 10 },
+                    "totalPages": { "type": "integer", "example": 15 },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/User" }
+                    }
+                  }
                 }
               }
             }
           },
-          "401": { "description": "No autorizado" },
-          "403": { "description": "Solo administradores pueden ver esta información" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de base de datos no disponible" }
+          "401": { "description": "No autorizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "Solo administradores pueden ver esta información", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de base de datos no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
     "/users/{id}": {
       "get": {
-        "summary": "Ver perfil de un usuario (autenticado)",
+        "summary": "Ver perfil de un usuario por ID (autenticado)",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID del usuario"
+          }
         ],
         "responses": {
           "200": {
-            "description": "Datos del usuario autenticado",
+            "description": "Datos del usuario",
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/User" } }
             }
           },
-          "401": { "description": "No autorizado" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de base de datos no disponible" }
+          "401": { "description": "No autorizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "No tiene permisos para esta acción", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Usuario no encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de base de datos no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       },
       "put": {
         "summary": "Actualizar datos de un usuario",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "string" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -98,24 +144,31 @@
               "application/json": { "schema": { "$ref": "#/components/schemas/User" } }
             }
           },
-          "400": { "description": "Datos inválidos" },
-          "401": { "description": "No autorizado" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de base de datos no disponible" }
+          "400": { "description": "Datos inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "No autorizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Usuario no encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de base de datos no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       },
       "delete": {
         "summary": "Eliminar usuario",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "string" }
+          }
         ],
         "responses": {
           "200": { "description": "Cuenta eliminada correctamente" },
-          "401": { "description": "No autorizado" },
-          "403": { "description": "No tiene permisos para esta acción" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de base de datos no disponible" }
+          "401": { "description": "No autorizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "403": { "description": "No tiene permisos para esta acción", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Usuario no encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de base de datos no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -123,7 +176,12 @@
       "patch": {
         "summary": "Actualizar contraseña de usuario",
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "string" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -141,15 +199,15 @@
         },
         "responses": {
           "200": { "description": "Contraseña actualizada correctamente" },
-          "400": { "description": "Datos inválidos" },
-          "401": { "description": "No autorizado" },
-          "404": { "description": "Usuario no encontrado" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de base de datos no disponible" }
+          "400": { "description": "Datos inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "No autorizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Usuario no encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de base de datos no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
-    "/recovery/password/{email}": {
+    "/recovery": {
       "post": {
         "summary": "Solicitar recuperación de contraseña",
         "requestBody": {
@@ -168,10 +226,10 @@
         },
         "responses": {
           "200": { "description": "Email enviado con instrucciones de recuperación" },
-          "400": { "description": "Email inválido" },
-          "404": { "description": "Usuario no encontrado" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de correo no disponible" }
+          "400": { "description": "Email inválido", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "Usuario no encontrado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de correo no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -205,10 +263,10 @@
               }
             }
           },
-          "400": { "description": "Datos inválidos" },
-          "401": { "description": "Credenciales incorrectas" },
-          "500": { "description": "Error interno del servidor" },
-          "503": { "description": "Servicio de autenticación no disponible" }
+          "400": { "description": "Datos inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "Credenciales incorrectas", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "500": { "description": "Error interno del servidor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Servicio de autenticación no disponible", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     }
@@ -252,6 +310,14 @@
           "name": { "type": "string" },
           "email": { "type": "string", "format": "email" },
           "password": { "type": "string", "minLength": 8 }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "example": 400 },
+          "error": { "type": "string", "example": "Bad Request" },
+          "message": { "type": "string", "example": "Datos inválidos" }
         }
       }
     }

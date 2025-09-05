@@ -53,7 +53,7 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 	})
 
 	//Generacion de URL para recuperacion de contraseña
-	router.POST("/recovery/password", func(c *gin.Context) {
+	router.POST("/recovery", func(c *gin.Context) {
 		var req struct {
 			Email string `json:"email"`
 		}
@@ -204,19 +204,15 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 	})
 
 	//Obtencion de todos los usuarios
-	router.GET("/users", middleware.VerifyToken(), func(c *gin.Context) {
+	router.GET("/users/:name", middleware.VerifyToken(), func(c *gin.Context) {
 		email, _ := c.Get("jwtEmail")
-		var req model.User
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
-			return
-		}
-		nameOrEmail := req.Name
+		nameOrEmail := c.Param("name")
 		if email != "admin@admin.com" {
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
 			return
 		}
-		users, err := userService.GetAll(nameOrEmail)
+		
+		users, err := userService.GetByName(nameOrEmail)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not get users", "error": err.Error()})
 			return

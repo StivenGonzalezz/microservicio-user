@@ -98,6 +98,10 @@ func (s *UserService) Delete(userId int, email string, password string) error {
 	return s.Repo.Delete(user)
 }
 
-func (s *UserService) GetAll(nameOrEmail string) ([]model.User, error) {
-	return s.Repo.GetAll(nameOrEmail)
+func (s *UserService) GetByName(nameOrEmail string) ([]model.User, error) {
+	return s.Repo.GetByName(nameOrEmail)
+}
+
+func (s *UserService) GetAll() ([]model.User, error) {
+	return s.Repo.GetAll()
 }
