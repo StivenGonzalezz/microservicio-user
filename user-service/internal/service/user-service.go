@@ -61,8 +61,6 @@ func (s *UserService) UpdatePassword(id uint, password string) error {
     return s.Repo.Update(user)
 }
 
-
-
 func (s *UserService) GetId(userId int) (*model.User, error) {
 	return s.Repo.GetId(userId)
 }
@@ -104,4 +102,28 @@ func (s *UserService) GetByName(nameOrEmail string) ([]model.User, error) {
 
 func (s *UserService) GetAll() ([]model.User, error) {
 	return s.Repo.GetAll()
+}
+
+func (s *UserService) GetUsersWithPagination(name string, page, limit int, sort string) (map[string]interface{}, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	result, err := s.Repo.GetWithPagination(name, page, limit, sort)
+	if err != nil {
+		return nil, fmt.Errorf("error getting users with pagination: %w", err)
+	}
+
+	response := map[string]interface{}{
+		"total":      result.Total,
+		"page":       result.Page,
+		"limit":      result.Limit,
+		"totalPages": result.TotalPages,
+		"data":       result.Data,
+	}
+
+	return response, nil
 }

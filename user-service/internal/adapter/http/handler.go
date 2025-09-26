@@ -19,37 +19,29 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 		err := userService.Register(&req)
 		if err != nil {
 			if err.Error() == "email already registered" {
-				c.JSON(http.StatusConflict, gin.H{
-					"message": "The email is already in use",
-				})
+				c.JSON(http.StatusConflict, gin.H{"status": "409", "error": "Conflict", "message": "The email is already in use"})
 				return
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": "Internal server error, could not register user",
-				"error":   err.Error(),
-			})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "500", "error": "Internal Server Error", "message": "Internal server error, could not register user"})
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "User created successfully",
-			"user":    req,
-		})
+		c.JSON(http.StatusCreated, gin.H{"status": "201", "message": "User created successfully", "user": req})
 	})
 
 	//Login de usuario
 	router.POST("/login", func(c *gin.Context) {
 		var req model.User
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid request"})
 			return
 		}
 		token, err := userService.Login(req.Email, req.Password)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not login user", "error": err.Error()})
+			c.JSON(http.StatusNotFound, gin.H{"status": "404", "error": "Not Found", "message": "User not found"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "User logged in successfully", "token": token})
+		c.JSON(http.StatusOK, gin.H{"token": token})
 	})
 
 	//Generacion de URL para recuperacion de contraseña
@@ -58,20 +50,17 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 			Email string `json:"email"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid request"})
 			return
 		}
 
 		url, err := userService.RecoverPassword(req.Email)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": "Internal server error, could not generate recovery link",
-				"error":   err.Error(),
-			})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "500", "error": "Internal Server Error", "message": "Internal server error, could not generate recovery link"})
 			return
 		}
 
-		// En el futuro se envía por email, de momento lo devolvemos
+		// En el futuro se envia por email, de momento lo devolvemos por JSON
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Recovery link generated successfully",
 			"url":     url,
@@ -83,7 +72,7 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 		idParam := c.Param("id")
 		id, err := strconv.Atoi(idParam)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid user ID"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid user ID"})
 			return
 		}
 
@@ -91,17 +80,21 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 			Password string `json:"password"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid request"})
 			return
 		}
 
+		if req.Password ==""{
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Password cannot be empty"})
+			return
+		}
 		err = userService.UpdatePassword(uint(id), req.Password)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not update password", "error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "500", "error": "Internal Server Error", "message": "Could not update password"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+		c.JSON(http.StatusOK, gin.H{"status": "200", "message": "Password updated successfully"})
 	})
 
 	//Obtencion de un usuario
@@ -109,29 +102,21 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 		id := c.Param("id")
 		userId, err := strconv.Atoi(id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid request"})
 			return
 		}
 		user, err := userService.GetId(userId)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": "Internal server error, could not get user",
-				"error":   err.Error(),
-			})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "500", "error": "Internal Server Error", "message": "Internal server error, could not get user"})
 			return
 		}
 
 		if user == nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"message": "User not found",
-			})
+			c.JSON(http.StatusNotFound, gin.H{"status": "404", "error": "Not Found", "message": "User not found"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "User retrieved successfully",
-			"user":    user,
-		})
+		c.JSON(http.StatusOK, gin.H{"status": "200", "message": "User retrieved successfully", "user": user})
 	})
 
 	//Actualizacion de usuario
@@ -148,75 +133,91 @@ func SetupRoutes(router *gin.Engine, userService *service.UserService) {
 		URLId := c.Param("id")
 		URLIdInt, err2 := strconv.Atoi(URLId)
 		if err2 != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid user ID"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid user ID"})
 			return
 		}
 		if URLIdInt != int(req.ID) {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "401", "error": "Unauthorized", "message": "Unauthorized"})
 			return
 		}
 
 		if email != req.Email {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "401", "error": "Unauthorized", "message": "Unauthorized"})
 			return
 		}
 
 		err := userService.Update(&req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not update user", "error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "500", "error": "Internal Server Error", "message": "Internal server error, could not update user"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "User updated successfully", "user": &req})
+		c.JSON(http.StatusOK, gin.H{"status": "200", "message": "User updated successfully", "user": &req})
 	})
 
 	//Eliminacion de usuario
 	router.DELETE("/users/:id", middleware.VerifyToken(), func(c *gin.Context) {
 		var req model.User
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid request"})
 			return
 		}
 
 		userId, _ := c.Get("jwtId")
 		if userId == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "401", "error": "Unauthorized", "message": "Unauthorized"})
 			return
 		}
 
 		URLId := c.Param("id")
 		URLIdInt, err2 := strconv.Atoi(URLId)
 		if err2 != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid user ID"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "400", "error": "Bad Request", "message": "Invalid user ID"})
 			return
 		}
 		if URLIdInt != int(userId.(int)) {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "401", "error": "Unauthorized", "message": "Unauthorized"})
 			return
 		}
 
 		err := userService.Delete(userId.(int), req.Email, req.Password)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not delete user", "error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "500", "error": "Internal Server Error", "message": "Internal server error, could not delete user"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully", "user": &req})
+		c.JSON(http.StatusOK, gin.H{"status": "200", "message": "User deleted successfully", "user": &req})
 	})
 
-	//Obtencion de todos los usuarios
-	router.GET("/users/:name", middleware.VerifyToken(), func(c *gin.Context) {
+	// Obtención de usuarios con paginación y filtrado
+	router.GET("/users", middleware.VerifyToken(), func(c *gin.Context) {
 		email, _ := c.Get("jwtEmail")
-		nameOrEmail := c.Param("name")
 		if email != "admin@admin.com" {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "401", "error": "Unauthorized", "message": "Only admin can access this endpoint"})
 			return
 		}
-		
-		users, err := userService.GetByName(nameOrEmail)
+
+		name := c.Query("name")
+		page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+		if err != nil || page < 1 {
+			page = 1
+		}
+
+		limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+		if err != nil || limit < 1 || limit > 100 {
+			limit = 10
+		}
+
+		sort := c.DefaultQuery("sort", "asc")
+		if sort != "asc" && sort != "desc" {
+			sort = "asc"
+		}
+
+		result, err := userService.GetUsersWithPagination(name, page, limit, sort)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "Internal server error, could not get users", "error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "500", "error": "Internal Server Error", "message": "Internal server error, could not get users with pagination"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "Users retrieved successfully", "users": users})
+
+		c.JSON(http.StatusOK, result)
 	})
 }
