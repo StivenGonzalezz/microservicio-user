@@ -37,9 +37,10 @@ func ValidateUserPayload() gin.HandlerFunc {
 			"lastName": true,
 			"email":    true,
 			"password": true,
+			"phoneNumber": true,
 		}
 
-		requiredFields := []string{"name", "lastName", "email", "password"}
+		requiredFields := []string{"name", "lastName", "email", "password", "phoneNumber"}
 
 		for key := range raw {
 			if !allowedFields[key] {

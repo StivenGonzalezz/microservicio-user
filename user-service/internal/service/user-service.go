@@ -8,10 +8,12 @@ import (
 	"user-service/internal/domain/ports"
 	"user-service/pkg/hash"
 	"user-service/pkg/jwt"
+	"user-service/pkg/rabbitmq"
 )
 
 type UserService struct {
-	Repo ports.UserRepository
+	Repo      ports.UserRepository
+	Publisher *rabbitmq.Publisher
 }
 
 func (s *UserService) Register(user *model.User) error {
@@ -19,7 +21,31 @@ func (s *UserService) Register(user *model.User) error {
 	user.Password = hashPassword
 	createdAt := time.Now()
 	user.CreatedAt = createdAt.Format("2006-01-02")
-	return s.Repo.Save(user)
+
+	err := s.Repo.Save(user)
+	if err != nil {
+		return err
+	}
+
+	// publico evento en RabbitMQ
+	event := map[string]interface{}{
+		"action": "user.registered",
+		"user": map[string]interface{}{
+			"id":       user.ID,
+			"name":     user.Name,
+			"lastName": user.LastName,
+			"email":    user.Email,
+			"phone":    user.PhoneNumber,
+		},
+		"timestamp": time.Now(),
+	}
+
+	err = s.Publisher.Publish("user.registered", event)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *UserService) Login(email, password string) (string, error) {
@@ -33,32 +59,93 @@ func (s *UserService) Login(email, password string) (string, error) {
 		return "", errors.New("invalid password")
 	}
 
-	token, err := jwt.GenerateToken(int(user.ID),user.Email)
+	token, err := jwt.GenerateToken(int(user.ID), user.Email)
+	if err != nil {
+		return "", err
+	}
+
+	// publico evento en RabbitMQ
+	event := map[string]interface{}{
+		"action": "user.login",
+		"user": map[string]interface{}{
+			"id":       user.ID,
+			"name":     user.Name,
+			"lastName": user.LastName,
+			"email":    user.Email,
+			"phone":    user.PhoneNumber,
+		},
+		"timestamp": time.Now(),
+	}
+
+	err = s.Publisher.Publish("user.login", event)
+	if err != nil {
+		return "", err
+	}
+
 	return token, err
 }
 
 func (s *UserService) RecoverPassword(email string) (string, error) {
-    user, err := s.Repo.GetByEmail(email)
-    if err != nil {
-        return "", err
-    }
+	user, err := s.Repo.GetByEmail(email)
+	if err != nil {
+		return "", err
+	}
 
-    // De momento solo usamos el ID en la URL (más adelante podemos usar un token seguro)
-    recoveryURL := fmt.Sprintf("http://localhost:8080/user/password/%d", user.ID)
+	// De momento solo usamos el ID en la URL (más adelante podemos usar un token seguro)
+	recoveryURL := fmt.Sprintf("http://localhost:8080/user/password/%d", user.ID)
 
-    return recoveryURL, nil
+	event := map[string]interface{}{
+		"action": "user.recovery.link",
+		"user": map[string]interface{}{
+			"id":       user.ID,
+			"name":     user.Name,
+			"lastName": user.LastName,
+			"email":    user.Email,
+			"phone":    user.PhoneNumber,
+		},
+		"timestamp": time.Now(),
+	}
+
+	err = s.Publisher.Publish("user.recovery.link", event)
+	if err != nil {
+		return "", err
+	}
+
+	return recoveryURL, nil
 }
 
 func (s *UserService) UpdatePassword(id uint, password string) error {
-    user, err := s.Repo.GetId(int(id))
-    if err != nil {
-        return err
-    }
+	user, err := s.Repo.GetId(int(id))
+	if err != nil {
+		return err
+	}
 
-    hashPassword, _ := hash.HashPassword(password)
-    user.Password = hashPassword
+	hashPassword, _ := hash.HashPassword(password)
+	user.Password = hashPassword
 
-    return s.Repo.Update(user)
+	err = s.Repo.Update(user)
+	if err != nil {
+		return err
+	}
+
+	event := map[string]interface{}{
+		"action": "user.password.updated",
+		"user": map[string]interface{}{
+			"id":       user.ID,
+			"name":     user.Name,
+			"lastName": user.LastName,
+			"email":    user.Email,
+			"phone":    user.PhoneNumber,
+		},
+		"timestamp": time.Now(),
+	}
+
+	err = s.Publisher.Publish("user.password.updated", event)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *UserService) GetId(userId int) (*model.User, error) {
@@ -77,9 +164,8 @@ func (s *UserService) Update(user *model.User) error {
 	}
 	user.Password = userdb.Password
 
-    return s.Repo.Update(user)
+	return s.Repo.Update(user)
 }
-
 
 func (s *UserService) Delete(userId int, email string, password string) error {
 	user, err := s.Repo.GetByEmail(email)
@@ -90,7 +176,7 @@ func (s *UserService) Delete(userId int, email string, password string) error {
 		return errors.New("invalid email")
 	}
 	comparedSucces := hash.ComparePassword(user.Password, password)
-	if comparedSucces != nil{
+	if comparedSucces != nil {
 		return errors.New("invalid password")
 	}
 	return s.Repo.Delete(user)
