@@ -35,5 +35,16 @@ services:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin 
 
+  user-receiver:
+    build: ./user-receiver
+    environment:
+      RABBITMQ_URL: "amqp://admin:admin@rabbitmq:5672/"
+      PORT: 3000
+    depends_on:
+      - rabbitmq
+    ports:
+      - "3000:3000"
+
+
 volumes:
   postgres_data:
