@@ -30,30 +30,19 @@ SUBJECTS: Dict[str, str] = {
 
 BODIES: Dict[str, str] = {
     "user.registered": (
-        "Hola {full_name},\n\n"
-        "Gracias por registrarte en nuestro sistema. Tu cuenta ha sido creada correctamente.\n\n"
-        "Si tienes alguna duda, responde a este correo.\n\n"
-        "Saludos,\nEl equipo"
+        "Hola {full_name}, gracias por registrarte. Tu cuenta ha sido creada correctamente.\n\nSaludos,\nEl equipo"
     ),
     "user.login": (
-        "Hola {full_name},\n\n"
-        "Se ha detectado una autenticación en tu cuenta. Si fuiste tú, ignora este mensaje. "
-        "Si no reconoces esta actividad, por favor contacta soporte inmediatamente.\n\n"
-        "Saludos,\nEl equipo"
+        "Hola {full_name}, se detectó un inicio de sesión. Si no fuiste tú, contacta soporte.\n\nSaludos,\nEl equipo"
     ),
     "user.recovery.link": (
-        "Hola {full_name},\n\n"
-        "Hemos recibido una solicitud para recuperar tu contraseña. Si fuiste tú, sigue las instrucciones "
-        "en la plataforma para restablecerla. Si no solicitaste esto, ignora el mensaje.\n\n"
-        "Saludos,\nEl equipo"
+        "Hola {full_name}, solicitaste recuperar tu contraseña. Si no fuiste tú, ignora este mensaje. Saludos, El equipo"
     ),
     "user.password.updated": (
-        "Hola {full_name},\n\n"
-        "Te confirmamos que la contraseña asociada a tu cuenta ha sido actualizada correctamente. "
-        "Si no realizaste este cambio, contacta soporte de inmediato.\n\n"
-        "Saludos,\nEl equipo"
+        "Hola {full_name}, tu contraseña ha sido actualizada. Si no realizaste este cambio, contacta soporte.\n\nSaludos,\nEl equipo"
     ),
 }
+
 
 def render_subject(action: str) -> str:
     return SUBJECTS.get(action, f"Notificación: {action}")

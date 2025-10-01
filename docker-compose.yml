@@ -1,7 +1,7 @@
 services:
 
   user-service:
-    build: 
+    build:
       context: ./user-service
       dockerfile: Dockerfile
     container_name: user-service
@@ -20,7 +20,7 @@ services:
     env_file:
       - ./user-service/.env
     ports:
-      - "5433:5432"              
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -33,7 +33,7 @@ services:
       - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin 
+      RABBITMQ_DEFAULT_PASS: admin
 
   user-receiver:
     build: ./user-receiver
@@ -45,6 +45,25 @@ services:
     ports:
       - "3000:3000"
 
+  notification-service:
+    build: ./microservicio-notificacion
+    container_name: notification-service
+    ports:
+      - "8081:8080"
+    env_file:
+      - ./microservicio-notificacion/.env
+    depends_on:
+      - mongo
+      - rabbitmq
+
+  mongo:
+    image: mongo:6.0
+    container_name: mongo-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
 
 volumes:
+  mongo_data:
   postgres_data:
